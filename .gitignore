@@ -5,3 +5,5 @@ __pycache__/*
 *.pyd
 *.pyw
 *.pyz
+bogoDB/data/initial_results.json
+bogoDB/data/optimized_results.json
