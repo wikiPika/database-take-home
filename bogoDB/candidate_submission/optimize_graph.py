@@ -500,6 +500,46 @@ def build_de_brujin_enhanced(num_nodes: int) -> Dict[str, Dict[str, float]]:
     return graph
 
 
+def build_hot_core_funnel_graph(
+    num_nodes: int,
+    hot_core_size: int = 40,
+    jump: int = 7,
+    p_core_ring: float = 0.6,
+    p_core_skip: float = 0.4,
+    p_out_ring: float = 0.05,
+    p_out_funnel: float = 0.95,
+) -> Dict[str, Dict[str, float]]:
+    """
+    Hot-Core Funnel (HCF) topology as specified:
+
+    - Nodes 0..(H-1) form the hot core.
+    - All nodes have ring edge i -> (i+1)%N.
+      * Core ring weight = p_core_ring
+      * Outside ring weight = p_out_ring
+    - Second edge per node:
+      * Outside nodes: funnel to node 0 with weight p_out_funnel
+      * Core nodes: skip to ((i+jump) % hot_core_size) with weight p_core_skip
+
+    Weights are chosen to sum to 1 per node.
+    """
+    H = hot_core_size
+    graph: Dict[str, Dict[str, float]] = {str(i): {} for i in range(num_nodes)}
+
+    for i in range(num_nodes):
+        nxt = (i + 1) % num_nodes
+        if i < H:
+            # Core node
+            graph[str(i)][str(nxt)] = float(p_core_ring)
+            skip = (i + jump) % H
+            graph[str(i)][str(skip)] = float(p_core_skip)
+        else:
+            # Outside node
+            graph[str(i)][str(nxt)] = float(p_out_ring)
+            graph[str(i)]["0"] = float(p_out_funnel)
+
+    return graph
+
+
 def optimize_graph(
     initial_graph,
     queries: List[int],
@@ -508,9 +548,9 @@ def optimize_graph(
     max_edges_per_node=MAX_EDGES_PER_NODE,
 ):
     """Build the figure-clover topology (three loops) for testing."""
-    print("Starting express-ring graph construction...")
+    print("Starting Hot-Core Funnel graph construction...")
 
-    optimized_graph = build_express_ring_graph(num_nodes)
+    optimized_graph = build_hot_core_funnel_graph(num_nodes)
 
     # Verify constraints
     if not verify_constraints(optimized_graph, max_edges_per_node, max_total_edges):

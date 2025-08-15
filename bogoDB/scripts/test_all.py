@@ -34,6 +34,7 @@ from candidate_submission.optimize_graph import (
     build_de_bruijn_like_graph,
     build_de_brujin_enhanced,
     build_express_ring_graph,
+    build_hot_core_funnel_graph,
 )
 
 
@@ -109,6 +110,7 @@ def main():
         ("de_bruijn_like", lambda: build_de_bruijn_like_graph(NUM_NODES)),
         ("de_brujin_enhanced", lambda: build_de_brujin_enhanced(NUM_NODES)),
         ("express_ring", lambda: build_express_ring_graph(NUM_NODES)),
+        ("hot_core_funnel", lambda: build_hot_core_funnel_graph(NUM_NODES)),
     ]
 
     # Evaluate each optimizer
