@@ -44,6 +44,10 @@ Since the reward function is biased towards really short path length and the mai
 
 We maintain everything in a ring so folks have a chance to hit everything, but otherwise it absolutely slashes path length.
 
+##### 6b. Sweeping the (Parameter) Floor
+
+When in doubt, we run a little parameter sweep.
+
 ### Implementation Details
 
 I'll only mention something if it's interesting enoughg to talk about beyond whatever I yap about up there.

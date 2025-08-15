@@ -539,6 +539,16 @@ def build_hot_core_funnel_graph(
 
     return graph
 
+def build_modified_hot_core(num_nodes):
+    return build_hot_core_funnel_graph(
+        num_nodes=num_nodes,
+        hot_core_size=32,
+        p_core_ring=0.65,
+        p_core_skip=0.35,
+        p_out_ring=0.05,
+        p_out_funnel=0.95,
+    )
+
 
 def optimize_graph(
     initial_graph,

@@ -4,11 +4,14 @@ import sys
 import json
 import math
 import time
+import io
+from contextlib import redirect_stdout
 from collections import Counter
 
 # Headless plotting safety
 import matplotlib
 matplotlib.use("Agg")
+os.environ["TQDM_DISABLE"] = "1"
 
 # Ensure project root on path
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -35,6 +38,7 @@ from candidate_submission.optimize_graph import (
     build_de_brujin_enhanced,
     build_express_ring_graph,
     build_hot_core_funnel_graph,
+    build_modified_hot_core,
 )
 
 
@@ -92,11 +96,9 @@ def main():
     queries = load_json(QUERIES_FILE)
     qcounts = Counter(queries)
 
-    # Baseline
-    print_header("Baseline Evaluation (Initial Graph)")
+    # Baseline (silent)
     baseline = ensure_baseline(initial_graph, queries)
-    base_sr, base_median = short_metrics(baseline)
-    print(f"Success rate: {base_sr:.1f}%  |  Median path: {base_median if not math.isinf(base_median) else 'inf'}")
+    _, base_median = short_metrics(baseline)
 
     # Define optimizers
     optimizers = [
@@ -111,18 +113,21 @@ def main():
         ("de_brujin_enhanced", lambda: build_de_brujin_enhanced(NUM_NODES)),
         ("express_ring", lambda: build_express_ring_graph(NUM_NODES)),
         ("hot_core_funnel", lambda: build_hot_core_funnel_graph(NUM_NODES)),
+        ("modified_hot_core", lambda: build_modified_hot_core(NUM_NODES)),
     ]
 
-    # Evaluate each optimizer
+    # Evaluate each optimizer silently with minimal progress
     results_rows = []
-    for name, build in optimizers:
-        print_header(f"Evaluating: {name}")
+    total = len(optimizers)
+    for idx, (name, build) in enumerate(optimizers, start=1):
+        print(f"Running optimizer {idx}/{total}: {name}...", end="\r", flush=True)
         graph = build()
 
-        # Validate constraints
-        ok, msg = validate_graph(graph, NUM_NODES, MAX_TOTAL_EDGES, MAX_EDGES_PER_NODE)
+        # Validate constraints quietly
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            ok, msg = validate_graph(graph, NUM_NODES, MAX_TOTAL_EDGES, MAX_EDGES_PER_NODE)
         if not ok:
-            print(f"❌ Invalid graph for {name}: {msg}")
             sr = 0.0
             med = float("inf")
             score = 0.0
@@ -130,21 +135,14 @@ def main():
             db = BogoDB(graph)
             start = time.time()
             res = run_queries(db, queries)
-            dur = time.time() - start
+            _ = time.time() - start
             sr, med = short_metrics(res)
             score = combined_score(base_median, sr / 100.0, med)
-            print(
-                f"✓ Success rate: {sr:.1f}% | Median path: {med if not math.isinf(med) else 'inf'} | Time: {dur:.2f}s"
-            )
 
-        results_rows.append(
-            [
-                name,
-                f"{sr:.1f}%",
-                f"{med if not math.isinf(med) else 'inf'}",
-                f"{score:.2f}",
-            ]
-        )
+        results_rows.append([name, f"{sr:.1f}%", f"{med if not math.isinf(med) else 'inf'}", f"{score:.2f}"])
+
+    # Clear progress line
+    print(" " * 80, end="\r")
 
     # Summary table
     print_header("Summary (Higher score is better)")
