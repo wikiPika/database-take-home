@@ -46,8 +46,8 @@ Although we use the top-1 node as the hub center, we still would like somewhat c
 | ------------------------------------ | --------- | ----------- | ------ |
 | No Optimization                      | 79.50%    | 476.5       | -      |
 | Whatever Terrible Shit You Gave Me   | 70.00%    | 463.0       | 119.53 |
-| 1: Naive Figure-8                    | 100.00%   | 264.0       | 203.14 |
-| 2: Three Fifths of the Olympic Rings | 100.00%   | 256.25      | 205.07 |
+| 1: Naive Figure-8                    | 100.00%   | 264.0       | 226.94 |
+| 2: Three Fifths of the Olympic Rings | 100.00%   | 256.25      | 229.09 |
 | 3: Ice In My (Xylem) Veins           | 100.00%   | 220.0       | 240.38 |
 | 4: Bootleg Chord                     | 100.00%   | 327.25      | 211.98 |
 | 5: de Brujin Rolls in His Grave      | 100.00%   | 236.75      | 234.89 |
