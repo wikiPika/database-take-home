@@ -418,6 +418,68 @@ def build_figure_clover_with_reentry_graph(
     return base
 
 
+def build_chord_graph(
+    num_nodes: int,
+    step: int = 22,
+) -> Dict[str, Dict[str, float]]:
+    """
+    Build a Chord-style ring with a fixed skip edge per node.
+
+    - Each node i points to (i+1) % N and (i+step) % N.
+    - All weights are 1.0.
+    - Results in exactly 2*N edges (here, 1000), max outdegree=2.
+    """
+    graph: Dict[str, Dict[str, float]] = {str(i): {} for i in range(num_nodes)}
+    for i in range(num_nodes):
+        succ = (i + 1) % num_nodes
+        skip = (i + step) % num_nodes
+        graph[str(i)][str(succ)] = 1.0
+        graph[str(i)][str(skip)] = 1.0
+    return graph
+
+
+def build_de_bruijn_like_graph(
+    num_nodes: int,
+) -> Dict[str, Dict[str, float]]:
+    """
+    Build a de Bruijn-inspired graph on integers 0..N-1:
+    For each node i, add edges to (2*i) % N and (2*i + 1) % N, weight 1.0.
+
+    Notes:
+    - Outdegree per node: 2; total edges: 2*N (≤ 1000 when N=500).
+    - We interpret nodes as 0-based to match existing data (0..499).
+    """
+    graph: Dict[str, Dict[str, float]] = {str(i): {} for i in range(num_nodes)}
+    for i in range(num_nodes):
+        a = (2 * i) % num_nodes
+        b = (2 * i + 1) % num_nodes
+        graph[str(i)][str(a)] = 1.0
+        graph[str(i)][str(b)] = 1.0
+    return graph
+
+
+def build_express_ring_graph(num_nodes: int) -> Dict[str, Dict[str, float]]:
+    """
+    Build a ring over 0..N-1 (i -> (i+1)%N) and add an "express" train:
+    Using 1-based description: 1 -> 2 -> 4 -> 8 -> 16 -> 32 -> 64 -> 128 -> 256 -> 1
+    Mapped to 0-based indices: 0 -> 1 -> 3 -> 7 -> 15 -> 31 -> 63 -> 127 -> 255 -> 0
+    All edge weights are 1.0.
+    """
+    graph: Dict[str, Dict[str, float]] = {str(i): {} for i in range(num_nodes)}
+
+    # Ring edges
+    for i in range(num_nodes):
+        nxt = (i + 1) % num_nodes
+        graph[str(i)][str(nxt)] = 1.0
+
+    # Express train edges (0-based mapping of powers-of-two cycle)
+    express = [0, 1, 3, 7, 15, 31, 63, 127, 255, 0]
+    for s, t in zip(express, express[1:]):
+        graph[str(s)][str(t)] = 1.0
+
+    return graph
+
+
 def optimize_graph(
     initial_graph,
     queries: List[int],
@@ -426,12 +488,9 @@ def optimize_graph(
     max_edges_per_node=MAX_EDGES_PER_NODE,
 ):
     """Build the figure-clover topology (three loops) for testing."""
-    print("Starting figure-clover (with re-entry) graph construction...")
+    print("Starting express-ring graph construction...")
 
-    # Compute query frequencies
-    counts = Counter(queries)
-
-    optimized_graph = build_figure_clover_with_reentry_graph(num_nodes, counts, seed=RANDOM_SEED)
+    optimized_graph = build_express_ring_graph(num_nodes)
 
     # Verify constraints
     if not verify_constraints(optimized_graph, max_edges_per_node, max_total_edges):

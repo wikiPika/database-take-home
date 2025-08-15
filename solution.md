@@ -20,6 +20,18 @@ Since we have a whole three out-edges to work with, we should try making it more
 
 This one is just an experiment, but what if we add a loopback in the middle of each clove? Turns out it shaves a few percent.
 
+##### 4: Bootleg Chord (single express)
+
+So I learned about a similar sort of thing in Distributed Systems; it'll probably be also good here. We keep a sort of skip-table kind of thing for each node in a circular network which lets you get from anywhere to anywhere else pretty darn quickly while maintaining linear probing as necessary.
+
+As a proof of concept, we'll use $s = \sqrt{500} \sim 22$ as a single skip link. The square root here is an optimal point of the expected hops $\mathbb{E}(d) = \frac{N}{2s} + \frac{s}{2}$.
+
+This one ended up being not much better than clover-ing, probably because the path length ends up being really janky with all the hopping around.
+
+##### 5: de Brujin Rolls in His Grave
+
+To dishonor another researcher, we borrow logarithmic mixing fro de Brujin. Since our target node distribution is exponential, we can be a little handwavey about the last few hundred nodes - we connect the nodes in id sequence and add a skip "express train" between (1, 2, 4, 8, 16, ..., 256, 1).
+
 ### Implementation Details
 
 I'll only mention something if it's interesting enoughg to talk about beyond whatever I yap about up there.
@@ -36,14 +48,15 @@ Although we use the top-1 node as the hub center, we still would like somewhat c
 | Whatever Terrible Shit You Gave Me   | 70.00%    | 463.0       | 119.53 |
 | 1: Naive Figure-8                    | 100.00%   | 264.0       | 203.14 |
 | 2: Three Fifths of the Olympic Rings | 100.00%   | 256.25      | 205.07 |
-| 3: Ice In My (Xylem) Veins           | 100.00%   | 220.0       | 215.24 |
-
+| 3: Ice In My (Xylem) Veins           | 100.00%   | 220.0       | 240.38 |
+| 4: Bootleg Chord                     | 100.00%   | 327.25      | 211.98 |
+| 5: de Brujin Rolls in His Grave      | 100.00%   | 236.75      | 234.89 |
 
 ### Trade-offs & Limitations
 
-##### Clove Count
-
 Two cloves vs. three cloves didn't really mean much, probably because the center node isn't really hit thaaaaat frequently.
+
+In general I always want 100% hit rate since we have 100,000 tries (10 walks x 10,000 steps); we'd have to seriously mess up for a failure basically.
 
 ### Iteration Journey
 
