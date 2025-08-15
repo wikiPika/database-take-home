@@ -480,6 +480,26 @@ def build_express_ring_graph(num_nodes: int) -> Dict[str, Dict[str, float]]:
     return graph
 
 
+def build_de_brujin_enhanced(num_nodes: int) -> Dict[str, Dict[str, float]]:
+    """
+    Enhanced de Bruijn-inspired topology that favors reaching low IDs quickly.
+
+    For each node i (0-based):
+    - Edge A: to (2*i) % N  (doubling edge keeps expander-like reachability)
+    - Edge B: to i//2 if i > 0 else 1  (halving edge funnels toward small IDs)
+
+    All weights are 1.0. Total edges = 2*N, outdegree per node = 2.
+    This design leverages the workload skew where lower IDs are queried more often.
+    """
+    graph: Dict[str, Dict[str, float]] = {str(i): {} for i in range(num_nodes)}
+    for i in range(num_nodes):
+        a = (2 * i) % num_nodes
+        b = (i // 2) if i > 0 else 1  # avoid self-loop at 0 -> 0
+        graph[str(i)][str(a)] = 1.0
+        graph[str(i)][str(b)] = 1.0
+    return graph
+
+
 def optimize_graph(
     initial_graph,
     queries: List[int],

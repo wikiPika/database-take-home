@@ -32,6 +32,7 @@ from candidate_submission.optimize_graph import (
     build_figure_clover_with_reentry_graph,
     build_chord_graph,
     build_de_bruijn_like_graph,
+    build_de_brujin_enhanced,
     build_express_ring_graph,
 )
 
@@ -106,6 +107,7 @@ def main():
         ),
         ("chord_step22", lambda: build_chord_graph(NUM_NODES, step=22)),
         ("de_bruijn_like", lambda: build_de_bruijn_like_graph(NUM_NODES)),
+        ("de_brujin_enhanced", lambda: build_de_brujin_enhanced(NUM_NODES)),
         ("express_ring", lambda: build_express_ring_graph(NUM_NODES)),
     ]
 
@@ -158,4 +160,3 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -32,6 +32,10 @@ This one ended up being not much better than clover-ing, probably because the pa
 
 To dishonor another researcher, we borrow logarithmic mixing fro de Brujin. Since our target node distribution is exponential, we can be a little handwavey about the last few hundred nodes - we connect the nodes in id sequence and add a skip "express train" between (1, 2, 4, 8, 16, ..., 256, 1).
 
+##### 5b. de Brujin Settles Back Down
+
+There's some tweaking that should be done here, since the exponential distribution parameter is quite large. We add a reverse funnel line - this ends up potentially trapping some queries that target higher node IDs, but the path length becomes much, much shorter.
+
 ### Implementation Details
 
 I'll only mention something if it's interesting enoughg to talk about beyond whatever I yap about up there.
@@ -51,18 +55,21 @@ Although we use the top-1 node as the hub center, we still would like somewhat c
 | 3: Ice In My (Xylem) Veins           | 100.00%   | 220.0       | 240.38 |
 | 4: Bootleg Chord                     | 100.00%   | 327.25      | 211.98 |
 | 5: de Brujin Rolls in His Grave      | 100.00%   | 236.75      | 234.89 |
+| 6: de Brujin Settles Back Down       | 98.0      | 73.5        | 325.50 |
 
 ### Trade-offs & Limitations
 
 Two cloves vs. three cloves didn't really mean much, probably because the center node isn't really hit thaaaaat frequently.
 
-In general I always want 100% hit rate since we have 100,000 tries (10 walks x 10,000 steps); we'd have to seriously mess up for a failure basically.
+In general I always want near\* 100% hit rate since we have 100,000 tries (10 walks x 10,000 steps); we'd have to seriously mess up for a failure basically.
 
 ### Iteration Journey
 
 I'll use this as more of a general thoughts thing.
 
 The three outdegree thing really sucks! I was going to model this after a slime mold / Tokyo metro map type of thing but Tokyo (and the slime mold I guess) has huge transfer stations (ex. Shinjuku station).
+
+It's a shame I haven't taken a network theory class yet, but it is fun! I _knew_ that freshman seminar I took on swarm organization would come in handy at some point.
 
 ---
 
