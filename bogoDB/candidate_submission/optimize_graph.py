@@ -203,6 +203,120 @@ def build_figure_eight_graph(
     return graph
 
 
+def build_figure_clover_graph(
+    num_nodes: int,
+    query_counts: Counter,
+    seed: int = RANDOM_SEED,
+) -> Dict[str, Dict[str, float]]:
+    """
+    Construct a figure-clover graph with three loops attached to the top-1 hub.
+
+    - Three cycles (A, B, C) share a single center node (top-1 by query count).
+    - All nodes have outdegree 1, except the center which has outdegree 3.
+    - All edge weights are 1.0.
+    - Frequently queried nodes are split across the three circles and spaced within each.
+    """
+    random.seed(seed)
+
+    all_nodes = list(range(num_nodes))
+    if query_counts:
+        max_freq = max(query_counts.values())
+        candidates = [n for n, c in query_counts.items() if c == max_freq]
+        center = min(candidates)
+    else:
+        center = 0
+
+    remaining = [n for n in all_nodes if n != center]
+    freq = {n: query_counts.get(n, 0) for n in remaining}
+
+    high_nodes = [n for n in remaining if freq[n] > 0]
+    high_nodes.sort(key=lambda n: (-freq[n], n))
+
+    # Target sizes for three circles
+    base = len(remaining) // 3
+    sizes = [base, base, len(remaining) - 2 * base]
+
+    sets = [set(), set(), set()]
+    # Round-robin allocate high nodes to balance across sets
+    idx = 0
+    for n in high_nodes:
+        # Find next set that still has capacity
+        assigned = False
+        for _ in range(3):
+            si = (idx) % 3
+            if len(sets[si]) < sizes[si]:
+                sets[si].add(n)
+                idx = (si + 1)
+                assigned = True
+                break
+            idx += 1
+        if not assigned:
+            # Fallback: put in the smallest set
+            si = min(range(3), key=lambda i: len(sets[i]))
+            sets[si].add(n)
+
+    # Fill remaining capacity randomly
+    random.shuffle(remaining)
+    for n in remaining:
+        if any(n in s for s in sets):
+            continue
+        # choose the set with remaining capacity, else the smallest
+        choices = [i for i in range(3) if len(sets[i]) < sizes[i]]
+        if choices:
+            si = random.choice(choices)
+        else:
+            si = min(range(3), key=lambda i: len(sets[i]))
+        sets[si].add(n)
+
+    circles = [list(s) for s in sets]
+
+    def spaced_order(circle_nodes: List[int]) -> List[int]:
+        N = len(circle_nodes)
+        if N == 0:
+            return []
+        local_high = [n for n in high_nodes if n in circle_nodes]
+        local_rest = [n for n in circle_nodes if n not in local_high]
+        order = [None] * N
+        if local_high:
+            positions = [int((i + 0.5) * N / len(local_high)) % N for i in range(len(local_high))]
+            used = set()
+            fixed = []
+            for p in positions:
+                while p in used:
+                    p = (p + 1) % N
+                used.add(p)
+                fixed.append(p)
+            for pos, node in zip(fixed, local_high):
+                order[pos] = node
+        random.shuffle(local_rest)
+        it = iter(local_rest)
+        for i in range(N):
+            if order[i] is None:
+                order[i] = next(it)
+        return order
+
+    orders = [spaced_order(c) for c in circles]
+
+    graph: Dict[str, Dict[str, float]] = {str(n): {} for n in all_nodes}
+
+    # Build edges around each circle, last -> center
+    for order in orders:
+        for i in range(len(order)):
+            src = order[i]
+            if i + 1 < len(order):
+                dst = order[i + 1]
+            else:
+                dst = center
+            graph[str(src)][str(dst)] = 1.0
+
+    # Center to the start of each circle if non-empty
+    for order in orders:
+        if order:
+            graph[str(center)][str(order[0])] = 1.0
+
+    return graph
+
+
 def optimize_graph(
     initial_graph,
     queries: List[int],
@@ -210,13 +324,13 @@ def optimize_graph(
     max_total_edges=int(MAX_TOTAL_EDGES),
     max_edges_per_node=MAX_EDGES_PER_NODE,
 ):
-    """Build the figure-eight topology based on query frequencies."""
-    print("Starting figure-eight graph construction...")
+    """Build the figure-clover topology (three loops) for testing."""
+    print("Starting figure-clover graph construction...")
 
     # Compute query frequencies
     counts = Counter(queries)
 
-    optimized_graph = build_figure_eight_graph(num_nodes, counts, seed=RANDOM_SEED)
+    optimized_graph = build_figure_clover_graph(num_nodes, counts, seed=RANDOM_SEED)
 
     # Verify constraints
     if not verify_constraints(optimized_graph, max_edges_per_node, max_total_edges):
