@@ -3,11 +3,12 @@
 
 ### Approach & Analysis
 
-[Describe how you analyzed the query patterns and what insights you found]
+Random walks are rather silly. It's probably better to control the number of loops that happen, if only to morph things into more of a linear search (more predictable),
 
 ### Optimization Strategy
 
-[Explain your optimization strategy in detail]
+##### First implementation: Naive Figure-8
+Really dumb, this is just sticking the top node in the middle 
 
 ### Implementation Details
 

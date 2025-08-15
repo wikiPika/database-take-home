@@ -17,6 +17,8 @@ from scripts.constants import (
     NUM_NODES,
     MAX_EDGES_PER_NODE,
     MAX_TOTAL_EDGES,
+    QUERIES_FILE,
+    RANDOM_SEED,
 )
 
 
@@ -71,95 +73,150 @@ def verify_constraints(graph, max_edges_per_node, max_total_edges):
     return True
 
 
+def build_figure_eight_graph(
+    num_nodes: int,
+    query_counts: Counter,
+    seed: int = RANDOM_SEED,
+) -> Dict[str, Dict[str, float]]:
+    """Construct a figure-eight graph where the top-1 target is the center.
+
+    - Two cycles (A and B) share a single center node (top-1 most queried).
+    - All nodes have outdegree 1, except the center which has outdegree 2.
+    - All edge weights are 1.0.
+    - Nodes (especially frequently queried ones) are spaced across and within circles.
+    """
+    random.seed(seed)
+
+    # Determine the center node (top-1 by query count; tie breaks by smallest ID)
+    all_nodes = list(range(num_nodes))
+    if query_counts:
+        max_freq = max(query_counts.values())
+        candidates = [n for n, c in query_counts.items() if c == max_freq]
+        center = min(candidates)
+    else:
+        center = 0
+
+    # Remaining nodes exclude the center
+    remaining = [n for n in all_nodes if n != center]
+
+    # Frequency map for remaining nodes
+    freq = {n: query_counts.get(n, 0) for n in remaining}
+
+    # Identify nodes that were ever queried (besides center)
+    high_nodes = [n for n in remaining if freq[n] > 0]
+    # Sort by frequency desc, then by node id for determinism
+    high_nodes.sort(key=lambda n: (-freq[n], n))
+
+    # Base random distribution across circles
+    random.shuffle(remaining)
+    size_a = len(remaining) // 2
+    size_b = len(remaining) - size_a
+
+    # Build circle assignments ensuring high_nodes are split evenly
+    circle_a_set, circle_b_set = set(), set()
+    toggle = True
+    for n in high_nodes:
+        if toggle and len(circle_a_set) < size_a:
+            circle_a_set.add(n)
+        elif not toggle and len(circle_b_set) < size_b:
+            circle_b_set.add(n)
+        elif len(circle_a_set) < size_a:
+            circle_a_set.add(n)
+        else:
+            circle_b_set.add(n)
+        toggle = not toggle
+
+    # Fill remaining slots randomly while preserving sizes
+    for n in remaining:
+        if n in circle_a_set or n in circle_b_set:
+            continue
+        if len(circle_a_set) < size_a:
+            circle_a_set.add(n)
+        else:
+            circle_b_set.add(n)
+
+    circle_a = list(circle_a_set)
+    circle_b = list(circle_b_set)
+
+    # Equal spacing of high-frequency nodes within each circle
+    def spaced_order(circle_nodes: List[int]) -> List[int]:
+        N = len(circle_nodes)
+        if N == 0:
+            return []
+        # Split into high vs others for this circle
+        local_high = [n for n in high_nodes if n in circle_nodes]
+        local_rest = [n for n in circle_nodes if n not in local_high]
+
+        order = [None] * N
+        if local_high:
+            # Place local_high at approximately equal intervals
+            positions = [int((i + 0.5) * N / len(local_high)) % N for i in range(len(local_high))]
+            # Sort to make positions unique and ascending; in rare collisions, adjust
+            used = set()
+            fixed_positions = []
+            for p in positions:
+                while p in used:
+                    p = (p + 1) % N
+                used.add(p)
+                fixed_positions.append(p)
+
+            for pos, node in zip(fixed_positions, local_high):
+                order[pos] = node
+
+        random.shuffle(local_rest)
+        it = iter(local_rest)
+        for i in range(N):
+            if order[i] is None:
+                order[i] = next(it)
+        return order
+
+    order_a = spaced_order(circle_a)
+    order_b = spaced_order(circle_b)
+
+    # Build adjacency: all weights 1.0
+    graph: Dict[str, Dict[str, float]] = {str(n): {} for n in all_nodes}
+
+    # Circle A edges -> next, last -> center
+    for i in range(len(order_a)):
+        src = order_a[i]
+        if i + 1 < len(order_a):
+            dst = order_a[i + 1]
+        else:
+            dst = center
+        graph[str(src)][str(dst)] = 1.0
+
+    # Circle B edges -> next, last -> center
+    for i in range(len(order_b)):
+        src = order_b[i]
+        if i + 1 < len(order_b):
+            dst = order_b[i + 1]
+        else:
+            dst = center
+        graph[str(src)][str(dst)] = 1.0
+
+    # Center connects out to the start of both circles (if present)
+    if order_a:
+        graph[str(center)][str(order_a[0])] = 1.0
+    if order_b:
+        graph[str(center)][str(order_b[0])] = 1.0
+
+    return graph
+
+
 def optimize_graph(
     initial_graph,
-    results,
+    queries: List[int],
     num_nodes=NUM_NODES,
     max_total_edges=int(MAX_TOTAL_EDGES),
     max_edges_per_node=MAX_EDGES_PER_NODE,
 ):
-    """
-    Optimize the graph to improve random walk query performance.
+    """Build the figure-eight topology based on query frequencies."""
+    print("Starting figure-eight graph construction...")
 
-    Args:
-        initial_graph: Initial graph adjacency list
-        results: Results from queries on the initial graph
-        num_nodes: Number of nodes in the graph
-        max_total_edges: Maximum total edges allowed
-        max_edges_per_node: Maximum edges per node
+    # Compute query frequencies
+    counts = Counter(queries)
 
-    Returns:
-        Optimized graph
-    """
-    print("Starting graph optimization...")
-
-    # Create a copy of the initial graph to modify
-    optimized_graph = {}
-    for node, edges in initial_graph.items():
-        optimized_graph[node] = dict(edges)
-
-    # =============================================================
-    # TODO: Implement your optimization strategy here
-    # =============================================================
-    #
-    # Your goal is to optimize the graph structure to:
-    # 1. Increase the success rate of queries
-    # 2. Minimize the path length for successful queries
-    #
-    # You have access to:
-    # - initial_graph: The current graph structure
-    # - results: The results of running queries on the initial graph
-    #
-    # Query results contain:
-    # - Each query's target node
-    # - Whether the query was successful
-    # - The path taken during the random walk
-    #
-    # Remember the constraints:
-    # - max_total_edges: Maximum number of edges in the graph
-    # - max_edges_per_node: Maximum edges per node
-    # - All nodes must remain in the graph
-    # - Edge weights must be positive and ≤ 10
-
-    # ---------------------------------------------------------------
-    # EXAMPLE: Simple strategy to meet edge count constraint
-    # This is just a basic example - you should implement a more
-    # sophisticated strategy based on query analysis!
-    # ---------------------------------------------------------------
-
-    # Count total edges in the initial graph
-    total_edges = sum(len(edges) for edges in optimized_graph.values())
-
-    # If we exceed the limit, we need to prune edges
-    if total_edges > max_total_edges:
-        print(
-            f"Initial graph has {total_edges} edges, need to remove {total_edges - max_total_edges}"
-        )
-
-        # Example pruning logic (replace with your optimized strategy)
-        edges_to_remove = total_edges - max_total_edges
-        removed = 0
-
-        # Sort nodes by number of outgoing edges (descending)
-        nodes_by_edge_count = sorted(
-            optimized_graph.keys(), key=lambda n: len(optimized_graph[n]), reverse=True
-        )
-
-        # Remove edges from nodes with the most connections first
-        for node in nodes_by_edge_count:
-            if removed >= edges_to_remove:
-                break
-
-            # As a simplistic example, remove the edge with lowest weight
-            if len(optimized_graph[node]) > 1:  # Ensure node keeps at least one edge
-                # Find edge with minimum weight
-                min_edge = min(optimized_graph[node].items(), key=lambda x: x[1])
-                del optimized_graph[node][min_edge[0]]
-                removed += 1
-
-    # =============================================================
-    # End of your implementation
-    # =============================================================
+    optimized_graph = build_figure_eight_graph(num_nodes, counts, seed=RANDOM_SEED)
 
     # Verify constraints
     if not verify_constraints(optimized_graph, max_edges_per_node, max_total_edges):
@@ -172,7 +229,7 @@ def optimize_graph(
 if __name__ == "__main__":
     # Get file paths
     initial_graph_file = os.path.join(project_dir, "data", "initial_graph.json")
-    results_file = os.path.join(project_dir, "data", "initial_results.json")
+    queries_file = os.path.join(project_dir, "data", "queries.json")
     output_file = os.path.join(
         project_dir, "candidate_submission", "optimized_graph.json"
     )
@@ -183,11 +240,12 @@ if __name__ == "__main__":
     print(f"Loading initial graph from {initial_graph_file}")
     initial_graph = load_graph(initial_graph_file)
 
-    print(f"Loading query results from {results_file}")
-    results = load_results(results_file)
+    print(f"Loading queries from {queries_file}")
+    with open(queries_file, "r") as f:
+        queries = json.load(f)
 
-    print("Optimizing graph...")
-    optimized_graph = optimize_graph(initial_graph, results)
+    print("Building figure-eight optimized graph...")
+    optimized_graph = optimize_graph(initial_graph, queries)
 
     print(f"Saving optimized graph to {output_file}")
     save_graph(optimized_graph, output_file)

@@ -22,7 +22,8 @@ MAX_DEPTH = 10000
 NUM_WALKS_PER_QUERY = 10
 
 # Multiprocessing parameters
-USE_MULTIPROCESSING = True
+# Disable in sandboxed environments to avoid signaling restrictions
+USE_MULTIPROCESSING = False
 NUM_PROCESSES = 0  # 0 means use all available processors
 
 # File paths

@@ -4,6 +4,8 @@ import sys
 import json
 import numpy as np
 import statistics
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from typing import Dict, List, Any, Tuple, Optional
 from collections import Counter, defaultdict
