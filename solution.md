@@ -16,15 +16,17 @@ In hindsight this was not actually "very dumb". It (probabilistically) gurantees
 
 Since we have a whole three out-edges to work with, we should try making it more of a figure-three-leaf-clover type of thing. You may ask why I didn't do this the first time around... great question, I really can't answer that.
 
+##### 3: Ice In My (Xylem) Veins
+
+This one is just an experiment, but what if we add a loopback in the middle of each clove? Turns out it shaves a few percent.
+
 ### Implementation Details
+
+I'll only mention something if it's interesting enoughg to talk about beyond whatever I yap about up there.
 
 ##### 1: Naive Figure-8
 
 Although we use the top-1 node as the hub center, we still would like somewhat consistent hits for the rest of the small bunch in the exponential distribution, so we space those evenly around the two circles. Not too carefully though, it's more of a hit of salt or something.
-
-#### 2: Three Fifths of the Olympic Rings
-
-There's no new pizzazz here.
 
 ### Results
 
@@ -34,6 +36,8 @@ There's no new pizzazz here.
 | Whatever Terrible Shit You Gave Me   | 70.00%    | 463.0       | 119.53 |
 | 1: Naive Figure-8                    | 100.00%   | 264.0       | 203.14 |
 | 2: Three Fifths of the Olympic Rings | 100.00%   | 256.25      | 205.07 |
+| 3: Ice In My (Xylem) Veins           | 100.00%   | 220.0       | 215.24 |
+
 
 ### Trade-offs & Limitations
 
@@ -43,7 +47,9 @@ Two cloves vs. three cloves didn't really mean much, probably because the center
 
 ### Iteration Journey
 
-[Briefly describe your iteration process - what approaches you tried, what you learned, and how your solution evolved]
+I'll use this as more of a general thoughts thing.
+
+The three outdegree thing really sucks! I was going to model this after a slime mold / Tokyo metro map type of thing but Tokyo (and the slime mold I guess) has huge transfer stations (ex. Shinjuku station).
 
 ---
 

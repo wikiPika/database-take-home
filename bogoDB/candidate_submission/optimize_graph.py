@@ -317,6 +317,107 @@ def build_figure_clover_graph(
     return graph
 
 
+def build_figure_clover_with_reentry_graph(
+    num_nodes: int,
+    query_counts: Counter,
+    seed: int = RANDOM_SEED,
+) -> Dict[str, Dict[str, float]]:
+    """
+    Figure-clover with a mid-loop re-entry edge from each clove back to the hub.
+
+    - Start with the three-loop clover.
+    - For each loop, add one extra edge from its midpoint node back to the center (hub).
+    - All weights remain 1.0.
+    """
+    # Build base clover
+    base = build_figure_clover_graph(num_nodes, query_counts, seed=seed)
+
+    # Reconstruct the same orders used by the base builder by re-running its assignment logic
+    # Note: To keep in sync, we repeat the circle construction deterministically using the same seed.
+    random.seed(seed)
+    all_nodes = list(range(num_nodes))
+    if query_counts:
+        max_freq = max(query_counts.values())
+        candidates = [n for n, c in query_counts.items() if c == max_freq]
+        center = min(candidates)
+    else:
+        center = 0
+
+    remaining = [n for n in all_nodes if n != center]
+    freq = {n: query_counts.get(n, 0) for n in remaining}
+    high_nodes = [n for n in remaining if freq[n] > 0]
+    high_nodes.sort(key=lambda n: (-freq[n], n))
+
+    base_size = len(remaining) // 3
+    sizes = [base_size, base_size, len(remaining) - 2 * base_size]
+    sets = [set(), set(), set()]
+    idx = 0
+    for n in high_nodes:
+        assigned = False
+        for _ in range(3):
+            si = (idx) % 3
+            if len(sets[si]) < sizes[si]:
+                sets[si].add(n)
+                idx = (si + 1)
+                assigned = True
+                break
+            idx += 1
+        if not assigned:
+            si = min(range(3), key=lambda i: len(sets[i]))
+            sets[si].add(n)
+
+    random.shuffle(remaining)
+    for n in remaining:
+        if any(n in s for s in sets):
+            continue
+        choices = [i for i in range(3) if len(sets[i]) < sizes[i]]
+        if choices:
+            si = random.choice(choices)
+        else:
+            si = min(range(3), key=lambda i: len(sets[i]))
+        sets[si].add(n)
+
+    circles = [list(s) for s in sets]
+
+    def spaced_order(circle_nodes: List[int]) -> List[int]:
+        N = len(circle_nodes)
+        if N == 0:
+            return []
+        local_high = [n for n in high_nodes if n in circle_nodes]
+        local_rest = [n for n in circle_nodes if n not in local_high]
+        order = [None] * N
+        if local_high:
+            positions = [int((i + 0.5) * N / len(local_high)) % N for i in range(len(local_high))]
+            used = set()
+            fixed = []
+            for p in positions:
+                while p in used:
+                    p = (p + 1) % N
+                used.add(p)
+                fixed.append(p)
+            for pos, node in zip(fixed, local_high):
+                order[pos] = node
+        random.shuffle(local_rest)
+        it = iter(local_rest)
+        for i in range(N):
+            if order[i] is None:
+                order[i] = next(it)
+        return order
+
+    orders = [spaced_order(c) for c in circles]
+
+    # Add one re-entry edge per loop from its midpoint back to center
+    for order in orders:
+        if not order:
+            continue
+        mid = len(order) // 2
+        src = order[mid]
+        # Outgoing edge from midpoint to center (weight 1.0)
+        base[str(src)][str(center)] = 1.0
+
+    return base
+
+
 def optimize_graph(
     initial_graph,
     queries: List[int],
@@ -325,12 +426,12 @@ def optimize_graph(
     max_edges_per_node=MAX_EDGES_PER_NODE,
 ):
     """Build the figure-clover topology (three loops) for testing."""
-    print("Starting figure-clover graph construction...")
+    print("Starting figure-clover (with re-entry) graph construction...")
 
     # Compute query frequencies
     counts = Counter(queries)
 
-    optimized_graph = build_figure_clover_graph(num_nodes, counts, seed=RANDOM_SEED)
+    optimized_graph = build_figure_clover_with_reentry_graph(num_nodes, counts, seed=RANDOM_SEED)
 
     # Verify constraints
     if not verify_constraints(optimized_graph, max_edges_per_node, max_total_edges):
